@@ -38,7 +38,7 @@ const DEFAULT_CENTER = /** @type {[number, number]} */ ([-85.341, 31.099]);
 /** @typedef {{ id: string, dashed: boolean, points: Array<[number, number]> }} TrailSegment */
 /**
  * A marker of the day. `kind` is 'stay' (a place visit), 'start' or 'end' (where the day began or ended). `id` is the id of the timeline entry it stands for ('' for the ends).
- * @typedef {{ id: string, kind: 'stay' | 'start' | 'end', lat: number, lon: number, label: string, number?: number }} Stop
+ * @typedef {{ id: string, kind: 'stay' | 'start' | 'end', lat: number, lon: number, label: string, number?: number | null }} Stop
  */
 /**
  * @typedef {object} DayPayload
@@ -437,7 +437,7 @@ function updateMarkerElement(element, stop, pickable) {
   element.setAttribute('aria-label', stop.label);
   if (element instanceof HTMLButtonElement) {
     element.disabled = !pickable;
-    element.textContent = stop.number === undefined ? '' : String(stop.number);
+    element.textContent = stop.number === undefined || stop.number === null ? '' : String(stop.number);
   }
 }
 
