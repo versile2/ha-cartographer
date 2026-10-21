@@ -12,7 +12,7 @@
 // reports them through OnError, and no colour is written here: the colours of the trail arrive with the payload and the markers are styled by realm-history.css.
 
 import { boundsOf } from './geo.js';
-import { buildStyle, isStyleId, styleDocumentUrl } from './mapStyles.js';
+import { attributionStartsExpanded, buildStyle, createAttributionFold, isStyleId, styleDocumentUrl } from './mapStyles.js';
 
 const MAPLIBRE_ENTRY = '../lib/maplibre-gl/maplibre-gl.mjs';
 const MAPLIBRE_CREDIT = '<a href="https://maplibre.org/" target="_blank" rel="noopener noreferrer">MapLibre</a>';
@@ -200,6 +200,7 @@ export async function init(opts, dotnet) {
     map.addControl(new (lib().AttributionControl)({ compact: true, customAttribution: MAPLIBRE_CREDIT }), 'bottom-right');
     const attribution = container.querySelector('.maplibregl-ctrl-attrib-button');
     attribution?.setAttribute('data-testid', 'history-map-attribution');
+    bindHistoryAttribution(map, container, styleId);
 
     /** @type {Runtime} */
     const r = {
@@ -439,6 +440,34 @@ function updateMarkerElement(element, stop, pickable) {
     element.disabled = !pickable;
     element.textContent = stop.number === undefined || stop.number === null ? '' : String(stop.number);
   }
+}
+
+/**
+ * The credits as on the Location map: demo-offline draws no third-party data and starts as the (i) button; any other style starts open and folds on the first pan, zoom or click by the person, or after the fixed delay.
+ * @param {MapLibreMap} map
+ * @param {HTMLElement} scope
+ * @param {string} styleId
+ */
+function bindHistoryAttribution(map, scope, styleId) {
+  const control = scope.querySelector('.maplibregl-ctrl-attrib');
+  const collapse = () => control?.classList.remove('maplibregl-compact-show');
+  if (!attributionStartsExpanded(styleId)) {
+    collapse();
+    control?.setAttribute('open', '');
+    return;
+  }
+  const fold = createAttributionFold({
+    schedule: (callback, delayMs) => setTimeout(callback, delayMs),
+    cancel: (handle) => clearTimeout(/** @type {ReturnType<typeof setTimeout>} */ (handle)),
+    collapse,
+  });
+  fold.arm();
+  map.on('movestart', (event) => {
+    if (event.originalEvent) fold.fold();
+  });
+  map.on('click', () => fold.fold());
+  scope.querySelector('.maplibregl-ctrl-attrib-button')?.addEventListener('click', () => fold.release());
+  map.once('remove', () => fold.dispose());
 }
 
 /**
