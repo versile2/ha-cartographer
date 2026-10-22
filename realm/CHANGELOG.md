@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.2
+
+### Fixed
+
+- **History header on a phone.** The subtitle ("Yesterday - Tue, Sep 29") is no longer cut off with an ellipsis: below 600 px the
+  **Last 7 days** toggle is the calendar icon alone (it keeps its name for screen readers and fills in when it is on), and the
+  subtitle wraps to a second line when it needs one.
+- **History map credits.** One attribution button, the same 48 px (i) as the Location map, sitting inside the map clear of the timeline
+  (it was half hidden under it and drew a second (i)); tap it to read the credits, and they fold like the Location map's.
+- **Driving week chips.** The chips wrap onto a second row on a narrow screen instead of running off the edge, so none is cut off.
+- **History map, 7-day view.** The stop markers no longer read "null".
+
 ## 0.3.1
 
 ### Added

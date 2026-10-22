@@ -109,12 +109,21 @@ html:has(.realm-history) body {
 
 .realm-history__sub {
   margin: 0;
-  overflow: hidden;
   color: var(--realm-text-2);
   font-size: 0.8125rem;
   line-height: 1.3;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;   /* wraps to a second line at phone width, never cut with an ellipsis */
+}
+
+/* Below 600 px the Last 7 days toggle is the icon alone (its name stays on aria-label; the filled state says it is on), so the subtitle has the room to read whole. */
+@media (max-width: 599.98px) {
+  .realm-history__range {
+    padding: 0;
+  }
+
+  .realm-history__tool-label {
+    display: none;
+  }
 }
 
 .realm-history__days {
@@ -205,10 +214,56 @@ html:has(.realm-history) body {
   color: var(--realm-text-2);
 }
 
-/* MapLibre's attribution (i) is 29 px by default; its tap area is raised to 48 px. */
-.realm-history__map .maplibregl-ctrl-attrib-button {
+/* The attribution is the main map's control (realm-map.css): one 48 x 48 (i) on a pill, 12 px in from the bottom right corner of the map, which ends where the timeline begins, so
+   nothing overlaps it. The stock 29 px button tiled its glyph at 48 px, which drew the second (i). Open, the credits read to the left of the button on the same pill. */
+.realm-history__map .maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib.maplibregl-compact {
+  position: relative;
+  box-sizing: border-box;
+  width: 48px;
+  min-height: 48px;
+  margin: 0 12px 12px 0;
+  padding: 0;
+  border-radius: 24px;
+  background: var(--realm-control-bg);
+  color: var(--realm-text);
+}
+
+.realm-history__map .maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-button {
+  top: auto;
+  right: 0;
+  bottom: 0;
+  left: auto;
   width: 48px;
   height: 48px;
+  border-radius: 24px;
+  background-color: transparent;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 28px 28px;
+  filter: invert(1);
+}
+
+.realm-history__map .maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-button:focus {
+  box-shadow: none;
+}
+
+.realm-history__map .maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib.maplibregl-compact-show {
+  width: auto;
+  max-width: calc(100% - 24px);
+  padding: 6px 56px 6px 16px;
+}
+
+.realm-history__map .maplibregl-ctrl-attrib a,
+.realm-history__map .maplibregl-ctrl-attrib a:hover {
+  color: var(--realm-text);
+}
+
+.realm-history__map .maplibregl-ctrl-attrib-inner {
+  font-family: var(--realm-font-body);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .realm-history-stop {

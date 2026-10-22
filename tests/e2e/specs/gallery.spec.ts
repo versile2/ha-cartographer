@@ -509,3 +509,178 @@ test.describe('[GAL] screenshot gallery: the selection', () => {
     expectViewportPng(file, page, testInfo.project.name);
   });
 });
+
+// ---- Forum post scenes: SC18 to SC23 (History, the roster, Add place, the Add driver picker). Demo cast only. Their own describe block, appended at the end; the scenes above are untouched. ----
+// Every click waits for a settled (non-moving) box first and is made once: none of these actions is repeated if it seems to have had no effect, so a scene never toggles itself back.
+
+/** Resolves when `target` has a box that is the same on two reads 150 ms apart (the dialog or the list has stopped sliding), so a click lands where the person would tap. */
+async function expectStableBox(target: Locator, what: string): Promise<void> {
+  let last = '';
+  await expect
+    .poll(
+      async () => {
+        const box = await target.boundingBox();
+        const now = box === null ? '' : `${Math.round(box.x)},${Math.round(box.y)},${Math.round(box.width)},${Math.round(box.height)}`;
+        const stable = now !== '' && now === last;
+        last = now;
+        return stable;
+      },
+      { message: `${what} has stopped moving`, intervals: [150], timeout: 10_000 },
+    )
+    .toBe(true);
+}
+
+/** Opens the King's History from his detail, as a person does: his row, the handle in the bottom sheet (the panel already shows the detail), the History button. */
+async function openKingHistory(page: Page): Promise<void> {
+  const compact = viewportOf(page).width < EXPANDED_FROM;
+  await demo(page, compact ? { sheet: '80' } : {});
+  await mapReady(page);
+  const row = page.getByTestId('row-member-king');
+  await expect(row, 'the Drivers list shows').toBeVisible();
+  await expectStableBox(row, 'the King row');
+  await row.click();
+  if (compact) {
+    await expect(page.getByTestId('sheet-selection-header'), 'the King is selected').toBeVisible();
+    await page.getByTestId('sheet-handle').click();
+  }
+  const history = page.getByTestId('detail-history');
+  await expect(history, "the detail's History button").toBeVisible();
+  await expectStableBox(history, 'the History button');
+  await history.click();
+  await expect(page.getByTestId('history-page'), 'History is open').toBeVisible();
+  await expect(page.getByTestId('history-summary'), 'the day has loaded').toBeVisible();
+  await expect(page.getByTestId('history-map'), 'the history map is ready').toHaveAttribute('data-history-ready', 'true', { timeout: 30_000 });
+}
+
+/** Opens the Settings dialog on the roster the Demo starts with (four people, the wagon, two not tracked). */
+async function openRosterSettings(page: Page): Promise<void> {
+  await demo(page, { defaultRoster: true });
+  await mapReady(page);
+  await page.getByTestId('btn-settings').click();
+  const dialog = page.getByTestId('settings-dialog');
+  await expect(dialog, 'the Settings dialog is open').toBeVisible();
+  await expect(page.getByTestId('roster-section').locator('.realm-roster__heading'), 'the three groups').toHaveText(['PEOPLE 4', 'TRACKERS 1', 'NOT TRACKED 2']);
+  await expectStableBox(page.getByTestId('roster-row-person-king'), 'the King roster row');
+}
+
+test.describe('[GAL] screenshot gallery: forum post scenes', () => {
+  // SC18-history-day: the King's History for Tuesday Sep 29 (home, work, home, with the drives between), the first drive tapped so its path is highlighted on the map.
+  test('[GAL] SC18-history-day', { tag: ['@phone', '@unfolded'] }, async ({ page }, testInfo) => {
+    await openKingHistory(page);
+    await expect(page.locator('h1.realm-history__name'), "the King's name").toHaveText(castMember(loadDemoCast(), 'king').name);
+
+    await expect(page.getByTestId('history-prev'), 'the day selector can step back').toBeEnabled();
+    await page.getByTestId('history-prev').click();
+    await expect(page.getByTestId('history-page'), 'the day is yesterday').toHaveAttribute('data-day', '2026-09-29');
+    const list = page.getByTestId('history-list');
+    await expect(list, 'the stays').toContainText('At Hearth Haven');
+    await expect(list, 'a drive').toContainText(/Drive · [\d.]+ mi · /);
+    const map = page.getByTestId('history-map');
+    await expect(map, 'the trail is drawn').not.toHaveAttribute('data-history-segments', '0');
+    await expect(map, 'the day is fitted').toHaveAttribute('data-history-fit', 'done');
+
+    const drive = page.locator('[data-testid^="history-entry-"][data-kind="drive"]').first();
+    await expect(drive).toBeVisible();
+    await expectStableBox(drive, 'the first drive entry');
+    const id = (await drive.getAttribute('data-testid'))!.replace('history-entry-', '');
+    await drive.click();
+    await expect(map, 'the drive is highlighted').toHaveAttribute('data-history-active', id);
+    await expect(drive).toHaveAttribute('aria-pressed', 'true');
+    await expect(map).toHaveAttribute('data-history-fit', 'done');
+
+    const file = await saveShot(page, testInfo, 'SC18-history-day');
+    expectViewportPng(file, page, testInfo.project.name);
+  });
+
+  // SC19-history-week: the Last 7 days list, one row per day.
+  test('[GAL] SC19-history-week', { tag: ['@phone', '@unfolded'] }, async ({ page }, testInfo) => {
+    await openKingHistory(page);
+
+    const range = page.getByTestId('history-range');
+    await expectStableBox(range, 'the Last 7 days button');
+    await range.click();
+    await expect(page.getByTestId('history-page'), 'the range view').toHaveAttribute('data-mode', 'range');
+    await expect(page.getByTestId('history-day-2026-09-30'), "today's row").toBeVisible();
+    await expect(page.getByTestId('history-day-2026-09-29'), "yesterday's row").toBeVisible();
+    await expect(page.getByTestId('history-prev'), 'no day selector in the list').toHaveCount(0);
+    await expect(page.getByTestId('history-map')).toHaveAttribute('data-history-ready', 'true', { timeout: 30_000 });
+
+    const file = await saveShot(page, testInfo, 'SC19-history-week');
+    expectViewportPng(file, page, testInfo.project.name);
+  });
+
+  // SC20-settings-roster: Settings at "Who's on the map" with the three groups.
+  test("[GAL] SC20-settings-roster", { tag: ['@phone', '@unfolded'] }, async ({ page }, testInfo) => {
+    await openRosterSettings(page);
+    const section = page.getByTestId('roster-section');
+    await section.evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'instant' }));
+    await expect(section.locator('.realm-roster__heading').first(), 'PEOPLE is on screen').toBeInViewport();
+    await expectStableBox(page.getByTestId('roster-row-person-king'), 'the King roster row after the scroll');
+
+    const file = await saveShot(page, testInfo, 'SC20-settings-roster');
+    expectViewportPng(file, page, testInfo.project.name);
+  });
+
+  // SC21-roster-edit: the King's row opened for editing: name, title, colour, icon and the entity ids.
+  test('[GAL] SC21-roster-edit', { tag: ['@phone', '@unfolded'] }, async ({ page }, testInfo) => {
+    await openRosterSettings(page);
+    await page.getByTestId('roster-open-person-king').click();
+    const edit = page.getByTestId('roster-edit');
+    await expect(edit, 'the edit panel is open').toBeVisible();
+    await expect(page.getByTestId('roster-name'), 'the name field has the focus').toBeFocused();
+    await expect(page.getByTestId('roster-entity').first(), 'the entity ids show').toBeVisible();
+    await page.getByTestId('roster-row-person-king').evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'instant' }));
+    await expectStableBox(edit, 'the edit panel after the scroll');
+
+    const file = await saveShot(page, testInfo, 'SC21-roster-edit');
+    expectViewportPng(file, page, testInfo.project.name);
+  });
+
+  // SC22-add-place: Add place mode: the pin and the radius circle on the map, the form under it.
+  test('[GAL] SC22-add-place', { tag: ['@phone', '@unfolded'] }, async ({ page }, testInfo) => {
+    await demo(page, { defaultRoster: true });
+    await mapReady(page);
+    const tab = page.getByTestId('tab-places');
+    await tab.click();
+    await expect(tab, 'Places is selected').toHaveAttribute('aria-selected', 'true');
+    const add = page.getByTestId('add-place');
+    await add.scrollIntoViewIfNeeded();
+    await expectStableBox(add, '+ Add place');
+    await add.click();
+
+    await expect(page.getByTestId('placement-panel'), 'the panel is open').toBeVisible();
+    await expect(page.getByTestId('placement-pin'), 'the pin is on the map').toBeVisible();
+    await expect(page.getByTestId('sheet'), 'the sheet gives way').toBeHidden();
+    await page.getByTestId('placement-name').fill('Dog Park');
+    await page.getByTestId('placement-radius').fill('300');
+    await expect(page.getByTestId('placement-radius-text'), 'the radius').toHaveText('300 ft');
+    await expectStableBox(page.getByTestId('placement-panel'), 'the placement panel');
+
+    const file = await saveShot(page, testInfo, 'SC22-add-place');
+    expectViewportPng(file, page, testInfo.project.name);
+  });
+
+  // SC23-add-driver-picker: the Add driver picker, the people already on the map greyed out with "Already on the map".
+  test('[GAL] SC23-add-driver-picker', { tag: ['@phone', '@unfolded'] }, async ({ page }, testInfo) => {
+    await demo(page, { defaultRoster: true });
+    await mapReady(page);
+    const tab = page.getByTestId('tab-drivers');
+    await tab.click();
+    await expect(tab, 'Drivers is selected').toHaveAttribute('aria-selected', 'true');
+    const add = page.getByTestId('add-driver');
+    await add.scrollIntoViewIfNeeded();
+    await expectStableBox(add, '+ Add driver');
+    await add.click();
+
+    const picker = page.getByTestId('add-picker');
+    await expect(picker, 'the picker is open').toBeVisible();
+    await expect(page.locator('.realm-popup__title'), 'the title').toHaveText('Add driver');
+    await expect(page.getByTestId('add-pick-person-king'), 'the King is on the map').toBeDisabled();
+    await expect(page.getByTestId('add-pick-person-king'), 'and says why').toContainText('Already on the map');
+    await expect(page.getByTestId('add-pick-person-prince'), 'the prince can be added').toBeEnabled();
+    await expectStableBox(picker, 'the picker');
+
+    const file = await saveShot(page, testInfo, 'SC23-add-driver-picker');
+    expectViewportPng(file, page, testInfo.project.name);
+  });
+});

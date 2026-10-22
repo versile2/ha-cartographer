@@ -44,20 +44,10 @@
 
 .realm-week-chips {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  margin: 8px -16px 0;
+  margin: 8px 0 0;
   padding: 4px 16px;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scroll-snap-type: x proximity;
-  scroll-padding-inline: 16px;
-  scrollbar-width: none;
-  -webkit-mask-image: linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
-  mask-image: linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
-}
-
-.realm-week-chips::-webkit-scrollbar {
-  display: none;
 }
 
 .realm-week-chip {
